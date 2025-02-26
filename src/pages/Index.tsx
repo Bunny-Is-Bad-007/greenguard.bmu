@@ -1,15 +1,33 @@
-
 import { Card } from "@/components/ui/card";
 import { Droplet, ThermometerSun, Wind, Timer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Slider } from "@/components/ui/slider";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
+
+const mockWeatherData = [
+  { time: "Mon", temperature: 24, rainfall: 0 },
+  { time: "Tue", temperature: 26, rainfall: 10 },
+  { time: "Wed", temperature: 25, rainfall: 5 },
+  { time: "Thu", temperature: 27, rainfall: 0 },
+  { time: "Fri", temperature: 23, rainfall: 15 },
+];
+
+const mockIrrigationHistory = [
+  { date: "2024-02-01", amount: 50, suggested: 45 },
+  { date: "2024-02-02", amount: 40, suggested: 40 },
+  { date: "2024-02-03", amount: 60, suggested: 55 },
+  { date: "2024-02-04", amount: 45, suggested: 45 },
+];
 
 const Index = () => {
   const { toast } = useToast();
+  const maxWaterLevel = 100;
+  const [manualWaterLevel, setManualWaterLevel] = React.useState([50]);
 
   const handleIrrigationStart = () => {
     toast({
       title: "Irrigation Started",
-      description: "The system is now dispensing water based on AI recommendations.",
+      description: `Dispensing ${manualWaterLevel[0]} liters of water based on manual settings.`,
     });
   };
 
@@ -92,20 +110,72 @@ const Index = () => {
         </Card>
 
         <Card className="glass-card p-6">
-          <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-          <div className="space-y-4">
-            <button
-              onClick={handleIrrigationStart}
-              className="glass-button w-full py-2 px-4"
-            >
-              Start Irrigation
-            </button>
-            <button
-              className="glass-button w-full py-2 px-4 disabled:opacity-50"
-              disabled
-            >
-              Stop Irrigation
-            </button>
+          <h2 className="text-xl font-semibold mb-4">Manual Control</h2>
+          <div className="space-y-6">
+            <div>
+              <label className="text-sm text-gray-600 mb-2 block">
+                Water Level (Liters): {manualWaterLevel[0]}
+              </label>
+              <Slider
+                value={manualWaterLevel}
+                onValueChange={setManualWaterLevel}
+                max={maxWaterLevel}
+                step={1}
+                className="mb-4"
+              />
+              <p className="text-xs text-gray-500">
+                Maximum allowed: {maxWaterLevel}L
+              </p>
+            </div>
+            <div className="space-y-3">
+              <button
+                onClick={handleIrrigationStart}
+                className="glass-button w-full py-2 px-4"
+              >
+                Start Manual Irrigation
+              </button>
+              <button
+                className="glass-button w-full py-2 px-4 disabled:opacity-50"
+                disabled
+              >
+                Stop Irrigation
+              </button>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <Card className="glass-card p-6">
+          <h2 className="text-xl font-semibold mb-4">Weather Forecast</h2>
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={mockWeatherData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="time" />
+                <YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
+                <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
+                <Tooltip />
+                <Line yAxisId="left" type="monotone" dataKey="temperature" stroke="#8884d8" name="Temperature (°C)" />
+                <Line yAxisId="right" type="monotone" dataKey="rainfall" stroke="#82ca9d" name="Rainfall (mm)" />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        <Card className="glass-card p-6">
+          <h2 className="text-xl font-semibold mb-4">Irrigation History</h2>
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={mockIrrigationHistory}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="amount" fill="#8884d8" name="Actual Amount (L)" />
+                <Bar dataKey="suggested" fill="#82ca9d" name="AI Suggested (L)" />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </Card>
       </div>
