@@ -1,8 +1,11 @@
+
+import React from 'react';
 import { Card } from "@/components/ui/card";
 import { Droplet, ThermometerSun, Wind, Timer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Slider } from "@/components/ui/slider";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
+import { useQuery } from "@tanstack/react-query";
 
 const mockWeatherData = [
   { time: "Mon", temperature: 24, rainfall: 0 },
@@ -19,16 +22,60 @@ const mockIrrigationHistory = [
   { date: "2024-02-04", amount: 45, suggested: 45 },
 ];
 
+// API functions
+const fetchIrrigationHistory = async () => {
+  const response = await fetch('http://localhost:8000/history');
+  if (!response.ok) {
+    throw new Error('Failed to fetch irrigation history');
+  }
+  return response.json();
+};
+
+const requestIrrigation = async (waterLevel: number) => {
+  const response = await fetch('http://localhost:8000/predict', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      soil_moisture: 67, // Replace with actual sensor reading
+      temperature: 24,   // Replace with actual sensor reading
+      humidity: 45,      // Replace with actual sensor reading
+      rainfall_forecast: 0,
+    }),
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to get irrigation prediction');
+  }
+  return response.json();
+};
+
 const Index = () => {
   const { toast } = useToast();
   const maxWaterLevel = 100;
   const [manualWaterLevel, setManualWaterLevel] = React.useState([50]);
 
-  const handleIrrigationStart = () => {
-    toast({
-      title: "Irrigation Started",
-      description: `Dispensing ${manualWaterLevel[0]} liters of water based on manual settings.`,
-    });
+  // Fetch irrigation history
+  const { data: historyData, isLoading: historyLoading } = useQuery({
+    queryKey: ['irrigationHistory'],
+    queryFn: fetchIrrigationHistory,
+  });
+
+  const handleIrrigationStart = async () => {
+    try {
+      const prediction = await requestIrrigation(manualWaterLevel[0]);
+      toast({
+        title: "Irrigation Started",
+        description: `Dispensing ${manualWaterLevel[0]} liters of water. AI recommended: ${prediction.recommended_water}L`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to start irrigation. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
