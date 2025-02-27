@@ -1,25 +1,11 @@
+
 import React from 'react';
 import { Card } from "@/components/ui/card";
-import { Droplet, ThermometerSun, Wind, Timer } from "lucide-react";
+import { Droplet, ThermometerSun, Wind, Timer, CloudRain, TrendingUp, History } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Slider } from "@/components/ui/slider";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, Area, AreaChart, ComposedChart } from "recharts";
 import { useQuery } from "@tanstack/react-query";
-
-const mockWeatherData = [
-  { time: "Mon", temperature: 24, rainfall: 0 },
-  { time: "Tue", temperature: 26, rainfall: 10 },
-  { time: "Wed", temperature: 25, rainfall: 5 },
-  { time: "Thu", temperature: 27, rainfall: 0 },
-  { time: "Fri", temperature: 23, rainfall: 15 },
-];
-
-const mockIrrigationHistory = [
-  { date: "2024-02-01", amount: 50, suggested: 45 },
-  { date: "2024-02-02", amount: 40, suggested: 40 },
-  { date: "2024-02-03", amount: 60, suggested: 55 },
-  { date: "2024-02-04", amount: 45, suggested: 45 },
-];
 
 // API functions
 const fetchIrrigationHistory = async () => {
@@ -52,6 +38,8 @@ const Index = () => {
   const { toast } = useToast();
   const maxWaterLevel = 100;
   const [manualWaterLevel, setManualWaterLevel] = React.useState([50]);
+  const [isIrrigating, setIsIrrigating] = React.useState(false);
+  const [currentPrediction, setCurrentPrediction] = React.useState<any>(null);
   
   // Current sensor readings - you can make these state variables if they're dynamic
   const currentSoilMoisture = 30;
@@ -65,22 +53,37 @@ const Index = () => {
 
   const handleIrrigationStart = async () => {
     try {
+      setIsIrrigating(true);
       const prediction = await requestIrrigation(currentSoilMoisture, currentTemperature);
+      setCurrentPrediction(prediction);
+      
       toast({
         title: "Irrigation Started",
-        description: `AI Model Recommendation: ${prediction.recommended_amount}L. Manual setting: ${manualWaterLevel[0]}L`,
+        description: prediction.decision || `AI Model Recommendation: ${prediction.predicted_water}L. Manual setting: ${manualWaterLevel[0]}L`,
       });
       
-      console.log("🚀 AI Prediction:", prediction); // For debugging
+      console.log("🚀 AI Prediction:", prediction);
     } catch (error) {
-      console.error("❌ API Error:", error); // For debugging
+      console.error("❌ API Error:", error);
       toast({
         title: "Error",
         description: "Failed to start irrigation. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      // In a real app, this would be controlled by feedback from the irrigation system
+      setTimeout(() => setIsIrrigating(false), 5000);
     }
   };
+
+  // Transform rain_info into chart data if available
+  const rainfallForecastData = currentPrediction?.rain_info?.map((info: string) => {
+    const [date, amount] = info.split(": ");
+    return {
+      date: date.split(" ")[0], // Keep only the date part
+      rainfall: parseFloat(amount.replace(" mm", "")),
+    };
+  }) || [];
 
   return (
     <div className="min-h-screen p-6 bg-gradient-to-br from-green-50 to-blue-50">
@@ -93,7 +96,7 @@ const Index = () => {
         <Card className="glass-card p-6">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-blue-100 rounded-full">
-              <Droplet className="w-6 h-6 text-blue-600" />
+              <Droplet className={`w-6 h-6 text-blue-600 ${isIrrigating ? 'animate-pulse' : ''}`} />
             </div>
             <div>
               <p className="text-sm text-gray-500">Soil Moisture</p>
@@ -117,11 +120,13 @@ const Index = () => {
         <Card className="glass-card p-6">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-purple-100 rounded-full">
-              <Wind className="w-6 h-6 text-purple-600" />
+              <CloudRain className="w-6 h-6 text-purple-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Humidity</p>
-              <p className="text-2xl font-semibold">45%</p>
+              <p className="text-sm text-gray-500">Forecast Rain</p>
+              <p className="text-2xl font-semibold">
+                {currentPrediction?.rainfall_forecast?.toFixed(1) || "0"} mm
+              </p>
             </div>
           </div>
         </Card>
@@ -129,11 +134,13 @@ const Index = () => {
         <Card className="glass-card p-6">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-green-100 rounded-full">
-              <Timer className="w-6 h-6 text-green-600" />
+              <History className="w-6 h-6 text-green-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Next Watering</p>
-              <p className="text-2xl font-semibold">2h 15m</p>
+              <p className="text-sm text-gray-500">Last Irrigation</p>
+              <p className="text-2xl font-semibold">
+                {historyData?.history?.[0]?.actual_water || 0}L
+              </p>
             </div>
           </div>
         </Card>
@@ -144,23 +151,27 @@ const Index = () => {
           <h2 className="text-xl font-semibold mb-4">System Status</h2>
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">Pump Status</span>
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-green-100 text-green-800">
-                Active
+              <span className="text-gray-600">Irrigation Status</span>
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${
+                isIrrigating ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+              }`}>
+                {isIrrigating ? 'Active' : 'Idle'}
               </span>
             </div>
+            {currentPrediction && (
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">AI Recommendation</span>
+                <span className="text-gray-900">{currentPrediction.predicted_water}L</span>
+              </div>
+            )}
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">Water Pressure</span>
-              <span className="text-gray-900">45 PSI</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Battery Level</span>
-              <span className="text-gray-900">85%</span>
+              <span className="text-gray-600">System Health</span>
+              <span className="text-gray-900">Optimal</span>
             </div>
           </div>
         </Card>
 
-        <Card className="glass-card p-6">
+        <Card className="glass-card p-6 col-span-2">
           <h2 className="text-xl font-semibold mb-4">Manual Control</h2>
           <div className="space-y-6">
             <div>
@@ -181,15 +192,12 @@ const Index = () => {
             <div className="space-y-3">
               <button
                 onClick={handleIrrigationStart}
-                className="glass-button w-full py-2 px-4"
+                disabled={isIrrigating}
+                className={`glass-button w-full py-2 px-4 ${
+                  isIrrigating ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
               >
-                Start Manual Irrigation
-              </button>
-              <button
-                className="glass-button w-full py-2 px-4 disabled:opacity-50"
-                disabled
-              >
-                Stop Irrigation
+                {isIrrigating ? '💧 Irrigating...' : 'Start Manual Irrigation'}
               </button>
             </div>
           </div>
@@ -198,18 +206,17 @@ const Index = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <Card className="glass-card p-6">
-          <h2 className="text-xl font-semibold mb-4">Weather Forecast</h2>
+          <h2 className="text-xl font-semibold mb-4">Rainfall Forecast</h2>
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={mockWeatherData}>
+              <AreaChart data={rainfallForecastData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="time" />
-                <YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
-                <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
+                <XAxis dataKey="date" />
+                <YAxis />
                 <Tooltip />
-                <Line yAxisId="left" type="monotone" dataKey="temperature" stroke="#8884d8" name="Temperature (°C)" />
-                <Line yAxisId="right" type="monotone" dataKey="rainfall" stroke="#82ca9d" name="Rainfall (mm)" />
-              </LineChart>
+                <Legend />
+                <Area type="monotone" dataKey="rainfall" fill="#82ca9d" stroke="#82ca9d" name="Rainfall (mm)" />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         </Card>
@@ -218,14 +225,15 @@ const Index = () => {
           <h2 className="text-xl font-semibold mb-4">Irrigation History</h2>
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockIrrigationHistory}>
+              <ComposedChart data={historyData?.history || []}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip />
-                <Bar dataKey="amount" fill="#8884d8" name="Actual Amount (L)" />
-                <Bar dataKey="suggested" fill="#82ca9d" name="AI Suggested (L)" />
-              </BarChart>
+                <Legend />
+                <Bar dataKey="actual_water" fill="#8884d8" name="Actual Water (L)" />
+                <Line type="monotone" dataKey="predicted_water" stroke="#82ca9d" name="AI Predicted (L)" />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </Card>
