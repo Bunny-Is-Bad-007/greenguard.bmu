@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card } from "@/components/ui/card";
 import { Droplet, ThermometerSun, Wind, Timer } from "lucide-react";
@@ -24,24 +23,22 @@ const mockIrrigationHistory = [
 
 // API functions
 const fetchIrrigationHistory = async () => {
-  const response = await fetch('http://localhost:8000/history');
+  const response = await fetch('http://127.0.0.1:8000/history');
   if (!response.ok) {
     throw new Error('Failed to fetch irrigation history');
   }
   return response.json();
 };
 
-const requestIrrigation = async (waterLevel: number) => {
-  const response = await fetch('http://localhost:8000/predict', {
+const requestIrrigation = async (soilMoisture: number, temperature: number) => {
+  const response = await fetch('http://127.0.0.1:8000/predict', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      soil_moisture: 67, // Replace with actual sensor reading
-      temperature: 24,   // Replace with actual sensor reading
-      humidity: 45,      // Replace with actual sensor reading
-      rainfall_forecast: 0,
+      soil_moisture: soilMoisture,
+      temperature: temperature
     }),
   });
   
@@ -55,6 +52,10 @@ const Index = () => {
   const { toast } = useToast();
   const maxWaterLevel = 100;
   const [manualWaterLevel, setManualWaterLevel] = React.useState([50]);
+  
+  // Current sensor readings - you can make these state variables if they're dynamic
+  const currentSoilMoisture = 30;
+  const currentTemperature = 28;
 
   // Fetch irrigation history
   const { data: historyData, isLoading: historyLoading } = useQuery({
@@ -64,12 +65,15 @@ const Index = () => {
 
   const handleIrrigationStart = async () => {
     try {
-      const prediction = await requestIrrigation(manualWaterLevel[0]);
+      const prediction = await requestIrrigation(currentSoilMoisture, currentTemperature);
       toast({
         title: "Irrigation Started",
-        description: `Dispensing ${manualWaterLevel[0]} liters of water. AI recommended: ${prediction.recommended_water}L`,
+        description: `AI Model Recommendation: ${prediction.recommended_amount}L. Manual setting: ${manualWaterLevel[0]}L`,
       });
+      
+      console.log("🚀 AI Prediction:", prediction); // For debugging
     } catch (error) {
+      console.error("❌ API Error:", error); // For debugging
       toast({
         title: "Error",
         description: "Failed to start irrigation. Please try again.",
@@ -93,7 +97,7 @@ const Index = () => {
             </div>
             <div>
               <p className="text-sm text-gray-500">Soil Moisture</p>
-              <p className="text-2xl font-semibold">67%</p>
+              <p className="text-2xl font-semibold">{currentSoilMoisture}%</p>
             </div>
           </div>
         </Card>
@@ -105,7 +109,7 @@ const Index = () => {
             </div>
             <div>
               <p className="text-sm text-gray-500">Temperature</p>
-              <p className="text-2xl font-semibold">24°C</p>
+              <p className="text-2xl font-semibold">{currentTemperature}°C</p>
             </div>
           </div>
         </Card>
@@ -135,8 +139,8 @@ const Index = () => {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="glass-card p-6 col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <Card className="glass-card p-6">
           <h2 className="text-xl font-semibold mb-4">System Status</h2>
           <div className="space-y-4">
             <div className="flex justify-between items-center">
