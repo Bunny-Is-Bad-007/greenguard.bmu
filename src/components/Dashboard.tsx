@@ -44,6 +44,11 @@ const Dashboard = () => {
   const [irrigationHistory, setIrrigationHistory] = useState<IrrigationRecord[]>([]);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [pumpProgress, setPumpProgress] = useState(0);
+  const [irrigationTimeRemaining, setIrrigationTimeRemaining] = useState('');
+
+  // Flow rate calibration: 0.67 liters per second (2 HP pump)
+  const LITERS_PER_SECOND = 0.67;
 
   // Fetch irrigation history from API
   const fetchIrrigationHistory = async () => {
@@ -138,33 +143,80 @@ const Dashboard = () => {
     }
   };
 
+  // Calculate irrigation time based on water amount and flow rate
+  const calculateIrrigationTime = (waterAmount: number): number => {
+    // Time in seconds = Water amount / Flow rate
+    return waterAmount / LITERS_PER_SECOND;
+  };
+
+  // Format seconds to MM:SS
+  const formatTimeRemaining = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   // Start manual irrigation
   const startManualIrrigation = () => {
     setIsIrrigating(true);
+    setPumpProgress(0);
+    
+    const totalWater = manualWaterAmount[0];
+    const totalTimeInSeconds = calculateIrrigationTime(totalWater);
     
     toast({
       title: "Irrigation Started",
-      description: `Dispensing ${manualWaterAmount[0]} liters of water`,
+      description: `Dispensing ${totalWater} liters of water (estimated time: ${formatTimeRemaining(totalTimeInSeconds)})`,
     });
     
-    // Simulate irrigation completion after 3 seconds
-    setTimeout(() => {
+    // Set initial time remaining
+    setIrrigationTimeRemaining(formatTimeRemaining(totalTimeInSeconds));
+    
+    // Update progress over time
+    const startTime = Date.now();
+    const updateInterval = 1000; // Update every second
+    
+    const updateProgress = () => {
+      const elapsedTimeInSeconds = (Date.now() - startTime) / 1000;
+      const percentComplete = Math.min((elapsedTimeInSeconds / totalTimeInSeconds) * 100, 100);
+      const remainingSeconds = Math.max(totalTimeInSeconds - elapsedTimeInSeconds, 0);
+      
+      setPumpProgress(percentComplete);
+      setIrrigationTimeRemaining(formatTimeRemaining(remainingSeconds));
+      
+      if (percentComplete < 100) {
+        irrigationTimer = setTimeout(updateProgress, updateInterval);
+      } else {
+        // Irrigation complete
+        completeIrrigation();
+      }
+    };
+    
+    let irrigationTimer = setTimeout(updateProgress, updateInterval);
+    
+    // Store timer in a ref to clear it if needed
+    const timerRef = { current: irrigationTimer };
+    
+    // Function to handle irrigation completion
+    const completeIrrigation = () => {
+      clearTimeout(timerRef.current);
       setIsIrrigating(false);
+      setPumpProgress(100);
       
       // Update history with new irrigation record
       const newRecord: IrrigationRecord = {
         date: new Date().toISOString().split("T")[0],
-        actual_water: manualWaterAmount[0],
-        predicted_water: prediction?.predicted_water || manualWaterAmount[0],
+        actual_water: totalWater,
+        predicted_water: prediction?.predicted_water || totalWater,
       };
       
       setIrrigationHistory([newRecord, ...irrigationHistory]);
       
       toast({
         title: "Irrigation Complete",
-        description: `Dispensed ${manualWaterAmount[0]} liters of water`,
+        description: `Dispensed ${totalWater} liters of water`,
       });
-    }, 3000);
+    };
   };
 
   // Initial data fetch
@@ -308,6 +360,9 @@ const Dashboard = () => {
                   />
                   <span className="text-lg font-semibold w-12 text-right">{manualWaterAmount[0]}L</span>
                 </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Est. time: {formatTimeRemaining(calculateIrrigationTime(manualWaterAmount[0]))}
+                </div>
               </div>
 
               <div className="flex justify-between items-center">
@@ -329,12 +384,20 @@ const Dashboard = () => {
               </div>
 
               {isIrrigating && (
-                <div className="mt-4 animate-pulse">
-                  <div className="h-2 bg-primary/20 rounded-full overflow-hidden">
-                    <div className="h-full bg-primary animate-[water-flow_3s_ease-in-out_infinite]"></div>
+                <div className="mt-4">
+                  <div className="h-4 bg-primary/20 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-primary transition-all duration-1000 ease-linear"
+                      style={{ width: `${pumpProgress}%` }}
+                    ></div>
                   </div>
-                  <div className="text-center mt-2 text-green-600 font-semibold">
-                    💧 Dispensing {manualWaterAmount[0]} liters of water...
+                  <div className="flex justify-between mt-2 text-sm">
+                    <div className="text-green-600 font-semibold">
+                      💧 Dispensing {manualWaterAmount[0]} liters of water...
+                    </div>
+                    <div className="text-blue-600 font-semibold">
+                      {irrigationTimeRemaining} remaining
+                    </div>
                   </div>
                 </div>
               )}

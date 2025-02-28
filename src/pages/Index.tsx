@@ -12,7 +12,7 @@ const Index = () => {
             <span className="text-3xl">🌱</span> GreenGuard
             <span className="text-green-500 hidden md:inline">Smart Irrigation System</span>
           </h1>
-          <div className="text-sm text-gray-500">Powered by AI</div>
+          <div className="text-sm text-gray-500">Powered by GreenGuard AI</div>
         </div>
       </header>
 
