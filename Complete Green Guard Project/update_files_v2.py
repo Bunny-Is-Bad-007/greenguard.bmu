@@ -1,10 +1,19 @@
 # created by Mushfiq
 # created by Mushfiq
+# created by Mushfiq
 import os
 import time
+import subprocess
 
 repo_path = '.'
 comment = '# created by Mushfiq\n'
+
+# Initialize Git repository if not already initialized
+if not os.path.exists(os.path.join(repo_path, '.git')):
+    subprocess.run(['git', 'init'], cwd=repo_path)
+
+# Add remote repository
+subprocess.run(['git', 'remote', 'add', 'origin', 'https://github.com/Bunny-Is-Bad-007/Haxked3.0.git'], cwd=repo_path)
 
 for subdir, _, files in os.walk(repo_path):
     for file in files:
@@ -18,4 +27,13 @@ for subdir, _, files in os.walk(repo_path):
             # Update the file modification time
             os.utime(file_path, (time.time(), time.time()))
 
-print("All files updated successfully.")
+# Stage all changes
+subprocess.run(['git', 'add', '.'], cwd=repo_path)
+
+# Commit changes
+subprocess.run(['git', 'commit', '-m', 'Add local folder content'], cwd=repo_path)
+
+# Push to GitHub
+subprocess.run(['git', 'push', '-u', 'origin', 'master'], cwd=repo_path)
+
+print("All files updated and pushed to GitHub successfully.")
