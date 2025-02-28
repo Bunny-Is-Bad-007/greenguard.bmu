@@ -1,6 +1,5 @@
 # created by Mushfiq
 # created by Mushfiq
-# created by Mushfiq
 import os
 import time
 import subprocess
@@ -12,8 +11,11 @@ comment = '# created by Mushfiq\n'
 if not os.path.exists(os.path.join(repo_path, '.git')):
     subprocess.run(['git', 'init'], cwd=repo_path)
 
-# Add remote repository
-subprocess.run(['git', 'remote', 'add', 'origin', 'https://github.com/Bunny-Is-Bad-007/Haxked3.0.git'], cwd=repo_path)
+# Check if remote origin already exists
+try:
+    subprocess.run(['git', 'remote', 'add', 'origin', 'https://github.com/Bunny-Is-Bad-007/Haxked3.0.git'], cwd=repo_path, check=True)
+except subprocess.CalledProcessError:
+    pass  # Remote already exists
 
 for subdir, _, files in os.walk(repo_path):
     for file in files:
@@ -34,6 +36,6 @@ subprocess.run(['git', 'add', '.'], cwd=repo_path)
 subprocess.run(['git', 'commit', '-m', 'Add local folder content'], cwd=repo_path)
 
 # Push to GitHub
-subprocess.run(['git', 'push', '-u', 'origin', 'master'], cwd=repo_path)
+subprocess.run(['git', 'push', '-u', 'origin', 'main'], cwd=repo_path)
 
 print("All files updated and pushed to GitHub successfully.")
