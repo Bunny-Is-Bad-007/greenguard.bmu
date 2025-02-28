@@ -11,7 +11,7 @@
 - **User-friendly UI built with Vite + React + Tailwind CSS**
 
 ## 🛠️ Tech Stack
-- **Frontend:** Vite + React + TypeScript + Tailwind CSS + shadcn-ui
+- **Frontend:** Vite + React + TypeScript + Tailwind CSS + shadcn-ui 
 - **Backend:** FastAPI (Python) with Uvicorn
 - **Database:** (Optional) SQLite/PostgreSQL for storing irrigation history
 - **Hardware:** ESP8266/LoRa + Raspberry Pi Zero (sensor data collection)
