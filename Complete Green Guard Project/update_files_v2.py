@@ -35,6 +35,9 @@ subprocess.run(['git', 'add', '.'], cwd=repo_path)
 # Commit changes
 subprocess.run(['git', 'commit', '-m', 'Add local folder content'], cwd=repo_path)
 
+# Pull from GitHub to integrate changes
+subprocess.run(['git', 'pull', 'origin', 'main'], cwd=repo_path)
+
 # Push to GitHub
 subprocess.run(['git', 'push', '-u', 'origin', 'main'], cwd=repo_path)
 
