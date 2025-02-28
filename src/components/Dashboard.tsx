@@ -75,8 +75,8 @@ const Dashboard = () => {
   // Fetch weather data from OpenWeather API
   const fetchWeatherData = async () => {
     try {
-      // Replace with your API key and coordinates
-      const apiKey = "demo_key"; // Replace with actual API key
+      // Replace with your actual API key 
+      const apiKey = "fe1e2423f564b68143922b414bafac76"; // Using your actual API key from the Python code
       const lat = "31.3260";
       const lon = "75.5762";
       const response = await fetch(
