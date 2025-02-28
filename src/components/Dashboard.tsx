@@ -46,6 +46,7 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [pumpProgress, setPumpProgress] = useState(0);
   const [irrigationTimeRemaining, setIrrigationTimeRemaining] = useState('');
+  const [irrigationTimer, setIrrigationTimer] = useState<NodeJS.Timeout | null>(null);
 
   // Flow rate calibration: 0.67 liters per second (2 HP pump)
   const LITERS_PER_SECOND = 0.67;
@@ -185,21 +186,23 @@ const Dashboard = () => {
       setIrrigationTimeRemaining(formatTimeRemaining(remainingSeconds));
       
       if (percentComplete < 100) {
-        irrigationTimer = setTimeout(updateProgress, updateInterval);
+        const timer = setTimeout(updateProgress, updateInterval);
+        setIrrigationTimer(timer);
       } else {
         // Irrigation complete
         completeIrrigation();
       }
     };
     
-    let irrigationTimer = setTimeout(updateProgress, updateInterval);
-    
-    // Store timer in a ref to clear it if needed
-    const timerRef = { current: irrigationTimer };
+    const timer = setTimeout(updateProgress, updateInterval);
+    setIrrigationTimer(timer);
     
     // Function to handle irrigation completion
     const completeIrrigation = () => {
-      clearTimeout(timerRef.current);
+      if (irrigationTimer) {
+        clearTimeout(irrigationTimer);
+        setIrrigationTimer(null);
+      }
       setIsIrrigating(false);
       setPumpProgress(100);
       
@@ -219,6 +222,36 @@ const Dashboard = () => {
     };
   };
 
+  // Stop irrigation
+  const stopIrrigation = () => {
+    if (irrigationTimer) {
+      clearTimeout(irrigationTimer);
+      setIrrigationTimer(null);
+    }
+    
+    setIsIrrigating(false);
+    
+    // Get the current progress to calculate how much water was dispensed
+    const partialWater = (manualWaterAmount[0] * pumpProgress) / 100;
+    const roundedWater = Math.round(partialWater * 10) / 10; // Round to 1 decimal place
+    
+    // Update history with partial irrigation record
+    const newRecord: IrrigationRecord = {
+      date: new Date().toISOString().split("T")[0],
+      actual_water: roundedWater,
+      predicted_water: prediction?.predicted_water || roundedWater,
+    };
+    
+    if (roundedWater > 0) {
+      setIrrigationHistory([newRecord, ...irrigationHistory]);
+    }
+    
+    toast({
+      title: "Irrigation Stopped",
+      description: `Dispensed ${roundedWater} liters of water before stopping`,
+    });
+  };
+
   // Initial data fetch
   useEffect(() => {
     fetchIrrigationHistory();
@@ -231,7 +264,13 @@ const Dashboard = () => {
       fetchIrrigationHistory();
     }, 5 * 60 * 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      // Clean up any active irrigation timer
+      if (irrigationTimer) {
+        clearTimeout(irrigationTimer);
+      }
+    };
   }, []);
 
   // Get last irrigation data
@@ -374,13 +413,22 @@ const Dashboard = () => {
                     </div>
                   )}
                 </div>
-                <Button
-                  onClick={startManualIrrigation}
-                  className="glass-button px-6"
-                  disabled={isIrrigating}
-                >
-                  {isIrrigating ? "Irrigating..." : "Start Manual Irrigation"}
-                </Button>
+                {isIrrigating ? (
+                  <Button
+                    onClick={stopIrrigation}
+                    className="bg-red-600 hover:bg-red-700 px-6"
+                  >
+                    Stop Irrigation
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={startManualIrrigation}
+                    className="glass-button px-6"
+                    disabled={isIrrigating}
+                  >
+                    Start Manual Irrigation
+                  </Button>
+                )}
               </div>
 
               {isIrrigating && (

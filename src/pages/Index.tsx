@@ -8,10 +8,16 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-blue-50">
       <header className="bg-white/80 backdrop-blur-sm shadow-sm py-4 px-6 mb-6">
         <div className="container mx-auto flex items-center justify-between">
-          <h1 className="text-2xl md:text-3xl font-bold text-green-700 flex items-center gap-2">
-            <span className="text-3xl">🌱</span> GreenGuard
-            <span className="text-green-500 hidden md:inline">Smart Irrigation System</span>
-          </h1>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-green-700 flex items-center gap-2">
+              <span className="text-3xl">🌱</span> GreenGuard
+              <span className="text-green-500 hidden md:inline">Smart Irrigation System</span>
+            </h1>
+            <div className="text-sm text-gray-600 mt-1">
+              BML Munjal University (BMU)<br />
+              Kapriwas, Haryana
+            </div>
+          </div>
           <div className="text-sm text-gray-500">Powered by GreenGuard AI</div>
         </div>
       </header>
