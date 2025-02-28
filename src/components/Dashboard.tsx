@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Droplet, ThermometerSun, CloudRain, TrendingUp, History, Sun, Wheat } from "lucide-react";
@@ -33,6 +32,8 @@ interface WeatherData {
   icon: string;
 }
 
+const API_URL = "http://127.0.0.1:8000";
+
 const Dashboard = () => {
   const [sensorData, setSensorData] = useState<SensorData>({
     soil_moisture: 30,
@@ -48,20 +49,17 @@ const Dashboard = () => {
   const [irrigationTimeRemaining, setIrrigationTimeRemaining] = useState('');
   const [irrigationTimer, setIrrigationTimer] = useState<NodeJS.Timeout | null>(null);
 
-  // Flow rate calibration: 0.67 liters per second (2 HP pump)
   const LITERS_PER_SECOND = 0.67;
 
-  // Fetch irrigation history from API
   const fetchIrrigationHistory = async () => {
     try {
-      const response = await fetch("http://127.0.0.1:8000/history");
+      const response = await fetch(`${API_URL}/history`);
       if (!response.ok) throw new Error("Failed to fetch irrigation history");
       const data = await response.json();
       setIrrigationHistory(data.history);
       console.log("✅ History fetched:", data.history);
     } catch (error) {
       console.error("❌ Error fetching history:", error);
-      // Use mock data if API fails
       setIrrigationHistory([
         { date: "2025-02-25", actual_water: 45, predicted_water: 42 },
         { date: "2025-02-24", actual_water: 50, predicted_water: 48 },
@@ -72,11 +70,21 @@ const Dashboard = () => {
     }
   };
 
-  // Fetch weather data from OpenWeather API
+  const fetchSensorData = async () => {
+    try {
+      const response = await fetch(`${API_URL}/sensor-data`);
+      if (!response.ok) throw new Error("Failed to fetch sensor data");
+      const data = await response.json();
+      setSensorData(data);
+      console.log("✅ Sensor data fetched:", data);
+    } catch (error) {
+      console.error("❌ Error fetching sensor data:", error);
+    }
+  };
+
   const fetchWeatherData = async () => {
     try {
-      // Replace with your actual API key 
-      const apiKey = "fe1e2423f564b68143922b414bafac76"; // Using your actual API key from the Python code
+      const apiKey = "fe1e2423f564b68143922b414bafac76";
       const lat = "31.3260";
       const lon = "75.5762";
       const response = await fetch(
@@ -96,7 +104,6 @@ const Dashboard = () => {
       console.log("✅ Weather fetched:", data);
     } catch (error) {
       console.error("❌ Error fetching weather:", error);
-      // Mock weather data
       setWeatherData({
         temp: 28.5,
         humidity: 60,
@@ -107,11 +114,10 @@ const Dashboard = () => {
     }
   };
 
-  // Predict irrigation needs based on sensor data
   const predictIrrigation = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("http://127.0.0.1:8000/predict", {
+      const response = await fetch(`${API_URL}/predict`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(sensorData),
@@ -128,7 +134,6 @@ const Dashboard = () => {
       });
     } catch (error) {
       console.error("❌ Error predicting irrigation:", error);
-      // Mock prediction data
       setPrediction({
         predicted_water: 10.05,
         rainfall_forecast: 32.61,
@@ -144,38 +149,46 @@ const Dashboard = () => {
     }
   };
 
-  // Calculate irrigation time based on water amount and flow rate
   const calculateIrrigationTime = (waterAmount: number): number => {
-    // Time in seconds = Water amount / Flow rate
     return waterAmount / LITERS_PER_SECOND;
   };
 
-  // Format seconds to MM:SS
   const formatTimeRemaining = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Start manual irrigation
-  const startManualIrrigation = () => {
+  const startManualIrrigation = async () => {
     setIsIrrigating(true);
     setPumpProgress(0);
     
     const totalWater = manualWaterAmount[0];
     const totalTimeInSeconds = calculateIrrigationTime(totalWater);
     
+    try {
+      const response = await fetch(`${API_URL}/start-irrigation`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          water_amount: totalWater,
+          predicted_water: prediction?.predicted_water || totalWater,
+        }),
+      });
+      
+      if (!response.ok) throw new Error("Failed to start irrigation");
+      console.log("✅ Irrigation started via API");
+    } catch (error) {
+      console.error("❌ Error starting irrigation via API:", error);
+    }
+    
     toast({
       title: "Irrigation Started",
       description: `Dispensing ${totalWater} liters of water (estimated time: ${formatTimeRemaining(totalTimeInSeconds)})`,
     });
     
-    // Set initial time remaining
-    setIrrigationTimeRemaining(formatTimeRemaining(totalTimeInSeconds));
-    
-    // Update progress over time
     const startTime = Date.now();
-    const updateInterval = 1000; // Update every second
+    const updateInterval = 1000;
     
     const updateProgress = () => {
       const elapsedTimeInSeconds = (Date.now() - startTime) / 1000;
@@ -189,7 +202,6 @@ const Dashboard = () => {
         const timer = setTimeout(updateProgress, updateInterval);
         setIrrigationTimer(timer);
       } else {
-        // Irrigation complete
         completeIrrigation();
       }
     };
@@ -197,7 +209,6 @@ const Dashboard = () => {
     const timer = setTimeout(updateProgress, updateInterval);
     setIrrigationTimer(timer);
     
-    // Function to handle irrigation completion
     const completeIrrigation = () => {
       if (irrigationTimer) {
         clearTimeout(irrigationTimer);
@@ -206,7 +217,6 @@ const Dashboard = () => {
       setIsIrrigating(false);
       setPumpProgress(100);
       
-      // Update history with new irrigation record
       const newRecord: IrrigationRecord = {
         date: new Date().toISOString().split("T")[0],
         actual_water: totalWater,
@@ -214,6 +224,7 @@ const Dashboard = () => {
       };
       
       setIrrigationHistory([newRecord, ...irrigationHistory]);
+      fetchIrrigationHistory();
       
       toast({
         title: "Irrigation Complete",
@@ -222,8 +233,7 @@ const Dashboard = () => {
     };
   };
 
-  // Stop irrigation
-  const stopIrrigation = () => {
+  const stopIrrigation = async () => {
     if (irrigationTimer) {
       clearTimeout(irrigationTimer);
       setIrrigationTimer(null);
@@ -231,11 +241,24 @@ const Dashboard = () => {
     
     setIsIrrigating(false);
     
-    // Get the current progress to calculate how much water was dispensed
     const partialWater = (manualWaterAmount[0] * pumpProgress) / 100;
-    const roundedWater = Math.round(partialWater * 10) / 10; // Round to 1 decimal place
+    const roundedWater = Math.round(partialWater * 10) / 10;
     
-    // Update history with partial irrigation record
+    try {
+      const response = await fetch(`${API_URL}/stop-irrigation`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dispensed_amount: roundedWater
+        }),
+      });
+      
+      if (!response.ok) throw new Error("Failed to stop irrigation via API");
+      console.log("✅ Irrigation stopped via API");
+    } catch (error) {
+      console.error("❌ Error stopping irrigation via API:", error);
+    }
+    
     const newRecord: IrrigationRecord = {
       date: new Date().toISOString().split("T")[0],
       actual_water: roundedWater,
@@ -244,6 +267,7 @@ const Dashboard = () => {
     
     if (roundedWater > 0) {
       setIrrigationHistory([newRecord, ...irrigationHistory]);
+      fetchIrrigationHistory();
     }
     
     toast({
@@ -252,34 +276,31 @@ const Dashboard = () => {
     });
   };
 
-  // Initial data fetch
   useEffect(() => {
     fetchIrrigationHistory();
     fetchWeatherData();
+    fetchSensorData();
     predictIrrigation();
 
-    // Refresh data every 5 minutes
     const interval = setInterval(() => {
       fetchWeatherData();
+      fetchSensorData();
       fetchIrrigationHistory();
     }, 5 * 60 * 1000);
 
     return () => {
       clearInterval(interval);
-      // Clean up any active irrigation timer
       if (irrigationTimer) {
         clearTimeout(irrigationTimer);
       }
     };
   }, []);
 
-  // Get last irrigation data
   const lastIrrigation = irrigationHistory.length > 0 ? irrigationHistory[0] : null;
 
   return (
     <div className="container mx-auto p-4">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {/* Soil Moisture Card */}
         <Card className="glass-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xl font-bold">Soil Moisture</CardTitle>
@@ -291,7 +312,6 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Temperature Card */}
         <Card className="glass-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xl font-bold">Temperature</CardTitle>
@@ -303,7 +323,6 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Rainfall Forecast Card */}
         <Card className="glass-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xl font-bold">Rainfall</CardTitle>
@@ -317,7 +336,6 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Last Irrigation Card */}
         <Card className="glass-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xl font-bold">Last Irrigation</CardTitle>
@@ -334,9 +352,7 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Weather and Irrigation Control Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        {/* Weather Card */}
         <Card className="glass-card md:col-span-1">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -375,7 +391,6 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Irrigation Control Card */}
         <Card className="glass-card md:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -454,9 +469,7 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Charts Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {/* Rainfall Forecast Chart */}
         <Card className="glass-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -496,7 +509,6 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Irrigation History Chart */}
         <Card className="glass-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -534,7 +546,6 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Irrigation Records Table */}
       <Card className="glass-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
