@@ -1,0 +1,16 @@
+2025-03-01 01:33:51,744 - INFO - Loading existing model from water_model.pkl
+2025-03-01 01:33:51,819 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2025-03-01 01:33:51,819 - INFO - [33mPress CTRL+C to quit[0m
+2025-03-01 01:33:51,821 - INFO -  * Restarting with stat
+2025-03-01 01:33:53,622 - INFO - Loading existing model from water_model.pkl
+2025-03-01 01:33:53,652 - WARNING -  * Debugger is active!
+2025-03-01 01:33:53,654 - INFO -  * Debugger PIN: 112-511-768
+2025-03-01 01:36:41,428 - INFO - Received data from ThingSpeak: {'soil_moisture': 50.0, 'temperature': 25.0, 'humidity': 60.0, 'raindrop': 0.0}
+2025-03-01 01:36:41,428 - INFO - 127.0.0.1 - - [01/Mar/2025 01:36:41] "GET /sensor-data HTTP/1.1" 200 -
+2025-03-01 01:37:14,957 - INFO - 127.0.0.1 - - [01/Mar/2025 01:37:14] "POST /predict HTTP/1.1" 200 -
+2025-03-01 02:06:54,199 - INFO -  * Detected change in 'C:\\Users\\sudha\\Hacked\\green guard git repo\\main.py', reloading
+2025-03-01 02:06:54,364 - INFO -  * Restarting with stat
+2025-03-01 02:06:56,207 - INFO - Loading existing model from water_model.pkl
+2025-03-01 02:06:56,238 - WARNING -  * Debugger is active!
+2025-03-01 02:06:56,240 - INFO -  * Debugger PIN: 112-511-768
