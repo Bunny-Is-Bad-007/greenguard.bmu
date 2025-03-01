@@ -149,7 +149,7 @@ class ThingSpeakInterface:
 
 # Model training and management
 class IrrigationModel:
-    def __init__(self, model_path="water_model.pkl"):
+    def __init__(self, model_path="water_prediction_model.pkl"):
         self.model_path = model_path
         self.model = self.load_or_train_model()
     
@@ -202,8 +202,15 @@ class IrrigationModel:
         for feature, importance in sorted(feature_importance.items(), key=lambda x: x[1], reverse=True):
             print(f"- {feature}: {importance:.4f}")
         
-        # Save model to file
-        joblib.dump(model, self.model_path)
+        # Save model to file using joblib for better compatibility
+        try:
+            joblib.dump(model, self.model_path, compress=3)
+            print(f"✅ Model successfully saved to {self.model_path}")
+            # Verify the saved model
+            loaded_model = joblib.load(self.model_path)
+            print(f"✅ Model verification successful: {type(loaded_model)}")
+        except Exception as e:
+            print(f"❌ Error saving model: {e}")
         print(f"Model trained and saved to {self.model_path}")
         return model
     
@@ -535,6 +542,21 @@ class IrrigationController:
                 time.sleep(60)  # Wait before retrying
 
 if __name__ == "__main__":
-    # Start the irrigation controller
-    controller = IrrigationController(crop_type="wheat")
-    controller.run()
+    # Force train a new model
+    model = IrrigationModel()
+    print("Training new model...")
+    model.train_new_model()
+    print("Model training completed. Testing prediction...")
+    
+    # Test the model with sample data
+    test_input = pd.DataFrame([[
+        50.0,  # soil_moisture
+        25.0,  # temperature
+        60.0,  # humidity
+        0.0,   # rainfall_1d
+        0.0,   # rainfall_3d
+        0.0    # raindrop
+    ]], columns=["soil_moisture", "temperature", "humidity", "rainfall_1d", "rainfall_3d", "raindrop"])
+    
+    prediction = model.predict(test_input)
+    print(f"Test prediction result: {prediction:.2f} liters")
