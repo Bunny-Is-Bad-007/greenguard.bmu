@@ -147,15 +147,20 @@ class ThingSpeakInterface:
             logging.error(f"Error writing to ThingSpeak: {e}")
             return False
 
+from model_manager import ModelManager
+
 class IrrigationModel:
-    def __init__(self, model_path="water_model.pkl"):
-        self.model_path = model_path
+    def __init__(self):
+        self.model_manager = ModelManager()
         self.model = self.load_or_train_model()
     
     def load_or_train_model(self):
-        if os.path.exists(self.model_path):
-            logging.info(f"Loading existing model from {self.model_path}")
-            return joblib.load(self.model_path)
+        # Try to load existing model first
+        model = self.model_manager.load_model()
+        if model is not None:
+            return model
+            
+        # If loading fails, train a new model
         logging.info("Training new irrigation model...")
         return self.train_new_model()
     
@@ -184,7 +189,8 @@ class IrrigationModel:
         y = df["water_needed"]
         model = RandomForestRegressor(n_estimators=100, random_state=42)
         model.fit(X, y)
-        joblib.dump(model, self.model_path)
+        # Save the trained model using ModelManager
+        self.model_manager.save_model(model)
         return model
     
     def predict(self, features):
